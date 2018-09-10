@@ -30,7 +30,7 @@ func TestPublish(t *testing.T) {
 	in := "input"
 	hub.Publish(in, "topic")
 
-	out, _ := hub.Subscribe("topic")
+	out, _ := hub.Fetch("topic")
 
 	if out != in {
 		fmt.Print(out)

@@ -20,9 +20,8 @@ func NewHub(bufferSize int) *Hub {
 // NewTopic adds a topic and buffered channel to the Hub. Returns an error if topic exists
 func (h *Hub) NewTopic(name string) error {
 
-	err := h.exist(name)
-	if err != nil {
-		return err
+	if h.exist(name) {
+		return errors.New("Topic already exists")
 	}
 
 	h.topics[name] = make(chan string, h.bufferSize)
@@ -33,9 +32,8 @@ func (h *Hub) NewTopic(name string) error {
 //Publish content to a topic
 func (h *Hub) Publish(content, topic string) error {
 
-	err := h.exist(topic)
-	if err != nil {
-		return err
+	if !h.exist(topic) {
+		return errors.New("Topic does not exist")
 	}
 
 	h.topics[topic] <- content
@@ -43,20 +41,22 @@ func (h *Hub) Publish(content, topic string) error {
 
 }
 
-// Subscribe will return last string that was published
-func (h *Hub) Subscribe(topic string) (string, error) {
-	err := h.exist(topic)
-	if err != nil {
-		return "", err
-	}
+// Fetch will return last string that was published
+func (h *Hub) Fetch(topic string) (string, error) {
 
-	return <-h.topics[topic], nil
-
+	temp := make(chan string)
+	go func(c chan string) {
+		for msg := range h.topics[topic] {
+			c <- msg
+		}
+		close(c)
+	}(temp)
+	return <-temp, nil
 }
 
-func (h *Hub) exist(topic string) error {
+func (h *Hub) exist(topic string) bool {
 	if _, ok := h.topics[topic]; ok {
-		return errors.New("Topic already exists")
+		return true
 	}
-	return nil
+	return false
 }
