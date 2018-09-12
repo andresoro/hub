@@ -5,14 +5,14 @@ import "errors"
 // Hub is a message broker (pub-sub) that relays messages between publishers and subscribers
 // publishers write to a topic
 type Hub struct {
-	topics     map[string]chan string
+	topics     map[string]chan Message
 	bufferSize int
 }
 
 // NewHub returns a Hub with a channel buffer size
 func NewHub(bufferSize int) *Hub {
 	return &Hub{
-		topics:     make(map[string]chan string),
+		topics:     make(map[string]chan Message),
 		bufferSize: bufferSize,
 	}
 }
@@ -24,7 +24,7 @@ func (h *Hub) NewTopic(name string) error {
 		return errors.New("Topic already exists")
 	}
 
-	h.topics[name] = make(chan string, h.bufferSize)
+	h.topics[name] = make(chan Message, h.bufferSize)
 	return nil
 
 }
@@ -36,7 +36,9 @@ func (h *Hub) Publish(content, topic string) error {
 		return errors.New("Topic does not exist")
 	}
 
-	h.topics[topic] <- content
+	msg := NewMessage(topic, content)
+
+	h.topics[topic] <- *msg
 	return nil
 
 }
@@ -47,7 +49,7 @@ func (h *Hub) Fetch(topic string) (string, error) {
 	temp := make(chan string)
 	go func(c chan string) {
 		for msg := range h.topics[topic] {
-			c <- msg
+			c <- msg.Content()
 		}
 		close(c)
 	}(temp)
