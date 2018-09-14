@@ -2,11 +2,12 @@ package hub
 
 import "errors"
 
-// Hub is a message broker (pub-sub) that relays messages between publishers and subscribers
+// Hub is a message broker (pub-sub) that relays messages between publishers and subscribers.
 // publishers write to a topic
 type Hub struct {
 	topics     map[string]chan Message
 	bufferSize int
+	subs       []Sub
 }
 
 // NewHub returns a Hub with a channel buffer size
