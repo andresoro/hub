@@ -1,6 +1,9 @@
 package hub
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // Hub is a message broker (pub-sub) that relays messages between publishers and subscribers.
 // publishers write to a topic
@@ -42,6 +45,16 @@ func (h *Hub) Publish(content, topic string) error {
 	h.topics[topic] <- *msg
 	return nil
 
+}
+
+// PublishAfter calls Publish after a delay
+func (h *Hub) PublishAfter(delay time.Duration, content, topic string) {
+	go func() {
+		select {
+		case <-time.After(delay):
+			h.Publish(content, topic)
+		}
+	}()
 }
 
 // Fetch will return last string that was published
