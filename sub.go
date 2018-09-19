@@ -2,7 +2,8 @@ package hub
 
 // Sub represents a subscriber on a given Hub
 type Sub struct {
-	topics []string
+	topics  []string
+	channel chan *Message
 }
 
 // NewSub returns a new sub
@@ -13,6 +14,14 @@ func NewSub(topics ...string) *Sub {
 	}
 
 	return &Sub{
-		topics: t,
+		topics:  t,
+		channel: make(chan *Message),
+	}
+}
+
+// Subscribe to another topic
+func (s *Sub) Subscribe(topics ...string) {
+	for _, topic := range topics {
+		s.topics = append(s.topics, topic)
 	}
 }
