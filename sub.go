@@ -4,6 +4,9 @@ import (
 	"sync"
 )
 
+// Subs slice of sub
+type Subs []*Sub
+
 // Sub represents a subscriber on a given Hub
 type Sub struct {
 	topics  []string
