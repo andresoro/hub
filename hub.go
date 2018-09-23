@@ -6,7 +6,8 @@ import (
 )
 
 // Hub is a message broker (pub-sub) that relays messages between publishers and subscribers.
-// publishers write to a topic
+// publishers write to a topic. subMap holds a group of subscribers for a given
+// topic
 type Hub struct {
 	topics     map[string]chan *Message
 	bufferSize int
@@ -32,6 +33,12 @@ func (h *Hub) NewTopic(name string) error {
 	h.topics[name] = make(chan *Message, h.bufferSize)
 	return nil
 
+}
+
+// AddSub to subs slice and topic map
+func (h *Hub) AddSub(s *Sub, topics ...string) error {
+	h.subs = append(h.subs, s)
+	return nil
 }
 
 //Publish content to a topic
