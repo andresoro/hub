@@ -2,85 +2,69 @@ package hub
 
 import (
 	"errors"
+	"sync"
 	"time"
 )
 
-// Hub is a message broker (pub-sub) that relays messages between publishers and subscribers.
-// publishers write to a topic. subMap holds a group of subscribers for a given
-// topic
+// Hub is a publish/subscribe broker
 type Hub struct {
-	topics     map[string]chan *Message
-	bufferSize int
-	subs       Subs
-	subMap     map[string]Subs
+	lock   sync.Mutex
+	topics map[string]chan []byte
 }
 
-// NewHub returns a Hub with a channel buffer size
-func NewHub(bufferSize int) *Hub {
-	return &Hub{
-		topics:     make(map[string]chan *Message),
-		bufferSize: bufferSize,
+type message struct {
+	topic   string
+	content []byte
+	time    time.Time
+}
+
+// New returns a new Hub and starts go routine to handle incoming messages
+func New() *Hub {
+	h := &Hub{
+		topics: make(map[string]chan []byte),
 	}
+
+	return h
 }
 
-// NewTopic adds a topic and buffered channel to the Hub. Returns an error if topic exists
-func (h *Hub) NewTopic(name string) error {
+// Publish a message to topic
+func (h *Hub) Publish(topic string, content []byte) error {
 
-	if h.exist(name) {
+	msg := message{
+		topic:   topic,
+		content: content,
+		time:    time.Now(),
+	}
+
+	if c, ok := h.topics[topic]; ok {
+		c <- msg.content
+		return nil
+	}
+	return errors.New("Topic does not exist")
+}
+
+// PublishNew will publish to a topic channel or create a new one if it doesnt exist
+func (h *Hub) PublishNew(topic string, content []byte) {
+	h.NewTopic(topic)
+	h.Publish(topic, content)
+}
+
+// NewTopic adds a topic to the hub
+func (h *Hub) NewTopic(topic string) error {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	if _, ok := h.topics[topic]; !ok {
 		return errors.New("Topic already exists")
 	}
-
-	h.topics[name] = make(chan *Message, h.bufferSize)
-	return nil
-
-}
-
-// AddSub to subs slice and topic map
-func (h *Hub) AddSub(s *Sub, topics ...string) error {
-	h.subs = append(h.subs, s)
+	h.topics[topic] = make(chan []byte)
 	return nil
 }
 
-//Publish content to a topic
-func (h *Hub) Publish(content, topic string) error {
-
-	if !h.exist(topic) {
-		return errors.New("Topic does not exist")
+// Subscribe returns a read only channel to receive messages
+func (h *Hub) Subscribe(topic string) (<-chan []byte, error) {
+	if _, ok := h.topics[topic]; !ok {
+		return nil, errors.New("Topic does not exist")
 	}
 
-	msg := NewMessage(topic, content)
-
-	h.topics[topic] <- msg
-	return nil
-
-}
-
-// PublishAfter calls Publish after a delay
-func (h *Hub) PublishAfter(delay time.Duration, content, topic string) {
-	go func() {
-		select {
-		case <-time.After(delay):
-			h.Publish(content, topic)
-		}
-	}()
-}
-
-// Fetch will return last string that was published
-func (h *Hub) Fetch(topic string) (string, error) {
-
-	temp := make(chan string)
-	go func(c chan string) {
-		for msg := range h.topics[topic] {
-			c <- msg.Content()
-		}
-		close(c)
-	}(temp)
-	return <-temp, nil
-}
-
-func (h *Hub) exist(topic string) bool {
-	if _, ok := h.topics[topic]; ok {
-		return true
-	}
-	return false
+	return h.topics[topic], nil
 }
