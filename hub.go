@@ -53,11 +53,15 @@ func (h *Hub) PublishNew(topic string, content []byte) {
 func (h *Hub) NewTopic(topic string) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	if _, ok := h.topics[topic]; !ok {
+	if _, ok := h.topics[topic]; ok {
 		return errors.New("Topic already exists")
 	}
 	h.topics[topic] = make(chan []byte)
 	return nil
+}
+
+func (h *Hub) Close(topic string) {
+	close(h.topics[topic])
 }
 
 // Subscribe returns a read only channel to receive messages
