@@ -60,8 +60,15 @@ func (h *Hub) NewTopic(topic string) error {
 	return nil
 }
 
+// Close a topic channel and delete from map
 func (h *Hub) Close(topic string) {
-	close(h.topics[topic])
+	h.lock.Lock()
+	if _, ok := h.topics[topic]; ok {
+		close(h.topics[topic])
+		delete(h.topics, topic)
+	}
+
+	h.lock.Unlock()
 }
 
 // Subscribe returns a read only channel to receive messages
